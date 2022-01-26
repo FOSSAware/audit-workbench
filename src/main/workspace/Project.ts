@@ -16,6 +16,9 @@ import { Tree } from './Tree/Tree/Tree';
 import { reScanService } from '../services/RescanLogicService';
 import { logicComponentService } from '../services/LogicComponentService';
 import { serviceProvider } from '../services/ServiceProvider';
+import { Search } from '../Search/Search';
+
+const { performance } = require('perf_hooks');
 
 export class Project extends EventEmitter {
   work_root: string;
@@ -121,7 +124,7 @@ export class Project extends EventEmitter {
       processedFiles: self.processedFiles,
       filesSummary: self.filesSummary,
       tree: self.tree,
-    }
+    };
     fs.writeFileSync(`${this.metadata.getMyPath()}/tree.json`, JSON.stringify(a));
     log.info(`%c[ PROJECT ]: Project ${this.metadata.getName()} saved`, 'color:green');
   }
@@ -149,10 +152,9 @@ export class Project extends EventEmitter {
       processed: (100 * this.processedFiles) / this.filesSummary.include,
     });
 
-
     const scanIn = this.adapterToScannerInput(this.filesToScan);
     this.scanner.scan(scanIn);
-    //this.scanner.scanList(this.filesToScan, this.metadata.getScanRoot());
+    // this.scanner.scanList(this.filesToScan, this.metadata.getScanRoot());
     return true;
   }
 
@@ -193,13 +195,9 @@ export class Project extends EventEmitter {
 
     const scanIn = this.adapterToScannerInput(summary.files);
     this.scanner.scan(scanIn);
-
   }
 
-  private adapterToScannerInput(filesToScan: Record<string,string>): Array<ScannerInput> {
-
-
-
+  private adapterToScannerInput(filesToScan: Record<string, string>): Array<ScannerInput> {
     const fullScan: ScannerInput = {
       fileList: [],
       folderRoot: this.metadata.getScanRoot(),
@@ -276,6 +274,8 @@ export class Project extends EventEmitter {
       } else {
         await this.store.file.insertFiles(this.tree.getRootFolder().getFiles());
         const files: Array<File> = await this.store.file.getAll();
+       
+
         const aux = files.reduce((previousValue, currentValue) => {
           previousValue[currentValue.path] = currentValue.fileId;
           return previousValue;
@@ -432,7 +432,7 @@ export class Project extends EventEmitter {
     return this.tree.getNode(path);
   }
 
-  public getToken(){
+  public getToken() {
     return this.metadata.getToken();
   }
 }

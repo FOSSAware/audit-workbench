@@ -87,6 +87,10 @@ export enum IpcEvents {
 
   TREE_UPDATING = 'UPDATING_TREE',
   TREE_UPDATED = 'TREE_UPDATED',
+
+  SEARCH = 'SEARCH',
+  SEARCH_RESPONSE = 'SEARCH_RESPONSE',
+  SEARCH_FINISHED = 'SEARCH_FINISHED',
 }
 
 export const ipcMainEvents = [

@@ -29,6 +29,7 @@ import './main/workspace';
 import './main/report';
 import './main/license';
 import './main/controllers/userSetting';
+import './main/search';
 
 import { IpcEvents } from './ipc-events';
 import { workspace } from './main/workspace/Workspace';

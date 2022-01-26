@@ -1,4 +1,4 @@
-import { CircularProgress } from '@material-ui/core';
+import { CircularProgress, Input, InputLabel } from '@material-ui/core';
 import React, { useContext, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation, useRouteMatch } from 'react-router-dom';
 import SplitPane from 'react-split-pane';
@@ -12,6 +12,11 @@ import Detected from './pages/detected/Detected';
 import Identified from './pages/identified/Identified';
 import Reports from './pages/report/Report';
 import FileTree from './components/FileTree/FileTree';
+import { searchService } from '../../../api/search-service';
+import { IpcEvents } from '../../../ipc-events';
+import { finished } from 'stream';
+
+const { ipcRenderer } = require('electron');
 
 const Workbench = () => {
   const { path } = useRouteMatch();
@@ -21,12 +26,16 @@ const Workbench = () => {
   const { state, loadScan } = useContext(WorkbenchContext) as IWorkbenchContext;
   const { scanPath } = useContext(AppContext) as IAppContext;
 
+  const [word, setWord] = React.useState('');
+
   const { loaded } = state;
 
   const report = pathname.startsWith('/workbench/report');
 
   const onInit = async () => {
     const { path } = scanPath;
+    ipcRenderer.on(IpcEvents.SEARCH_RESPONSE, handlerSearch);
+    ipcRenderer.on(IpcEvents.SEARCH_FINISHED, searchFinished);
     const result = path ? await loadScan(path) : false;
     if (!result) {
       dialogController.showError('Error', 'Cannot read scan.');
@@ -40,6 +49,25 @@ const Workbench = () => {
     return onDestroy;
   }, []);
 
+  const handleChange = async (event) => {
+    setWord(event.target.value);
+    console.log("Start searching");
+    const results = await searchService.search(event.target.value);
+
+
+    
+  
+  };
+
+
+  const handlerSearch = (_event, results) => {
+   
+  };
+
+  const searchFinished = (_event, results) => {
+    console.log("Search finished",results);
+  };
+
   return (
     <div>
       <AppBar />
@@ -51,6 +79,8 @@ const Workbench = () => {
         pane1Style={report ? { display: 'none' } : {}}
       >
         <aside className="panel explorer">
+        <InputLabel htmlFor="component-simple">Search</InputLabel>
+        <Input id="component-simple" value={word} onChange={handleChange} />
           <div className="file-tree-container">
             <FileTree />
           </div>
