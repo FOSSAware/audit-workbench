@@ -1,3 +1,4 @@
+/* eslint-disable no-lonely-if */
 import { EventEmitter } from 'events';
 import { isBinaryFile, isBinaryFileSync } from 'isbinaryfile';
 import { workspace } from '../workspace/Workspace';
@@ -57,29 +58,34 @@ export class Search extends EventEmitter {
         lines.forEach((line) => {
           if (line.content !== undefined) {
             const words = line.content?.split(/[^a-zA-Z0-9*s]/g);
-
+            let countWord = 0;
             words?.forEach((word) => {
               if (word !== '') {
-                if (!dictionary[word]) {
+                if (dictionary[word] === undefined) {
                   dictionary[word] = {};
-
-                  dictionary[word][`${this.files[i].path}-${line.line}`] = [line.content.indexOf(word)];
-                } else if (dictionary[word][`${this.files[i].path}-${line.line}`]) {
-                  const auxIndex = dictionary[word][`${this.files[i].path}-${line.line}`];
-                  dictionary[word][`${this.files[i].path}-${line.line}`].push(line.content.indexOf(word, auxIndex + 1));
+                  dictionary[word][`${this.files[i].path}`] = { [`${line.line}`]: [countWord] };
                 } else {
-                  dictionary[word][`${this.files[i].path}-${line.line}`] = [line.content.indexOf(word)];
+                  if (dictionary[word][`${this.files[i].path}`] === undefined) {
+                    dictionary[word][`${this.files[i].path}`] = { [`${line.line}`]: [countWord] };
+                  } else {
+                    if (dictionary[word][`${this.files[i].path}`][`${line.line}`] === undefined) {
+                      dictionary[word][`${this.files[i].path}`][`${line.line}`] = [countWord];
+                    } else {
+                      dictionary[word][`${this.files[i].path}`][`${line.line}`].push(countWord);
+                    }
+                  }
                 }
+                countWord += 1;
               }
             });
           }
         });
       }
     }
+
     const t1 = performance.now();
     console.log(`Time: ${(t1 - t0) / 1000} seconds.`);
     console.log('Dictionary is created\n', 'WORDS:', Object.keys(dictionary).length);
-    // fs.writeFileSync('/tmp/dictionary.json', JSON.stringify(dictionary,null,2));
     return dictionary;
   }
 
@@ -101,18 +107,18 @@ export class Search extends EventEmitter {
   }
 
   public searchIndex(wordSearched) {
-    const dictionary = workspace.getOpenedProjects()[0].getDictionary();
-
-    if (wordSearched.split(' ').length > 0) {
-      const phrase = wordSearched.split(' ');
-      const partialResults = this.getPartialResultForPhrase(phrase, dictionary);
-
-      console.log('partial results', partialResults);
-      const res = this.searchPhrase(partialResults, phrase);
-      console.log('res', res);
-      return res;
+    const partialResults = this.getPartialResult(wordSearched);
+    let results = {};
+    if (wordSearched.split(' ').length > 1) {
+      results = this.getResultsAND(partialResults);
+    }else{
+    results = partialResults;
     }
+    return results;
+  }
 
+  private getPartialResultNotCompletedWord(wordSearched) {
+    const dictionary = workspace.getOpenedProjects()[0].getDictionary();
     const results = [];
     Array.from(
       new Set(
@@ -162,6 +168,24 @@ export class Search extends EventEmitter {
     return true;
   }
 
+  private getPartialResult(wordSearched) {
+    const dictionary = workspace.getOpenedProjects()[0].getDictionary();
+    const results = {};
+    if (wordSearched.split(' ').length > 0) {
+      const words = wordSearched.split(' ');
+      words.forEach((word) => {
+        if (dictionary[word] !== undefined) {
+          if (!results[word]) results[word] = dictionary[word];
+        }
+      });
+    } else {
+      if (dictionary[wordSearched] !== undefined) {
+        results[wordSearched] = dictionary[wordSearched];
+      }
+    }
+    return results;
+  }
+
   private getPartialResultForPhrase(searchedPhrase, dic) {
     const aux = {};
 
@@ -184,7 +208,7 @@ export class Search extends EventEmitter {
     let valid = true;
 
     Object.keys(results[auxKeys[0]]).forEach((file) => {
-      for (let i = 0; i < auxKeys.length; i+=1) {
+      for (let i = 0; i < auxKeys.length; i += 1) {
         if (results[auxKeys[i]][file] === undefined) {
           valid = false;
           break;
@@ -235,5 +259,30 @@ export class Search extends EventEmitter {
     }
 
     return searchedPhraseResults;
+  }
+
+  private getResultsAND(results) {
+    const aux: Record<string, Array<string>> = {};
+    Object.entries(results).forEach(([key, value]) => {
+      const files = Object.keys(value);
+      files.forEach((file) => {
+        if (!aux[file]) {
+          aux[file] = [key];
+        } else {
+          aux[file].push(key);
+        }
+      });
+    });
+
+    const wordSearchedLenght = Object.keys(results).length;
+
+    const resultsAND = [];
+    Object.entries(aux).forEach(([key, value]) => {
+      if (value.length === wordSearchedLenght) {
+        resultsAND.push(key);
+      }
+    });
+
+    return resultsAND;
   }
 }

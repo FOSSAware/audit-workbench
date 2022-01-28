@@ -53,7 +53,7 @@ const Workbench = () => {
     setWord(event.target.value);
     console.log("Start searching");
     // const results = await searchService.search("license");
-    const  { data } = await searchService.searchByIndex('this section');
+    const  { data } = await searchService.searchByIndex('int i');
     console.log(data);
     
   
