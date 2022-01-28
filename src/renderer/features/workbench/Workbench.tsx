@@ -34,8 +34,8 @@ const Workbench = () => {
 
   const onInit = async () => {
     const { path } = scanPath;
-    ipcRenderer.on(IpcEvents.SEARCH_RESPONSE, handlerSearch);
-    ipcRenderer.on(IpcEvents.SEARCH_FINISHED, searchFinished);
+  //  ipcRenderer.on(IpcEvents.SEARCH_RESPONSE, handlerSearch);
+  //  ipcRenderer.on(IpcEvents.SEARCH_FINISHED, searchFinished);
     const result = path ? await loadScan(path) : false;
     if (!result) {
       dialogController.showError('Error', 'Cannot read scan.');
@@ -52,15 +52,16 @@ const Workbench = () => {
   const handleChange = async (event) => {
     setWord(event.target.value);
     console.log("Start searching");
-    const results = await searchService.search(event.target.value);
-
-
+    // const results = await searchService.search("license");
+    const  { data } = await searchService.searchByIndex('this section');
+    console.log(data);
     
   
   };
 
 
   const handlerSearch = (_event, results) => {
+    console.log("Results: ", results);
    
   };
 

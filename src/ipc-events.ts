@@ -91,6 +91,8 @@ export enum IpcEvents {
   SEARCH = 'SEARCH',
   SEARCH_RESPONSE = 'SEARCH_RESPONSE',
   SEARCH_FINISHED = 'SEARCH_FINISHED',
+
+  SEARCH_BY_INDEX = 'SEARCH_BY_INDEX',
 }
 
 export const ipcMainEvents = [

@@ -8,6 +8,12 @@ class SearchService extends BaseService {
     const response = await ipcRenderer.invoke(IpcEvents.SEARCH, word);
     return response;
   }
+
+  public async searchByIndex(word: string): Promise<any> {
+    const response = await ipcRenderer.invoke(IpcEvents.SEARCH_BY_INDEX, word);
+   
+    return response;
+  }
 }
 
 export const searchService = new SearchService();

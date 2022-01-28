@@ -17,6 +17,7 @@ import { reScanService } from '../services/RescanLogicService';
 import { logicComponentService } from '../services/LogicComponentService';
 import { serviceProvider } from '../services/ServiceProvider';
 import { Search } from '../Search/Search';
+import { CollectionsOutlined } from '@material-ui/icons';
 
 const { performance } = require('perf_hooks');
 
@@ -56,6 +57,8 @@ export class Project extends EventEmitter {
   state: ProjectState;
 
   config: IProjectCfg;
+
+  dictionary: any;
 
   constructor(name: string) {
     super();
@@ -274,7 +277,6 @@ export class Project extends EventEmitter {
       } else {
         await this.store.file.insertFiles(this.tree.getRootFolder().getFiles());
         const files: Array<File> = await this.store.file.getAll();
-       
 
         const aux = files.reduce((previousValue, currentValue) => {
           previousValue[currentValue.path] = currentValue.fileId;
@@ -287,6 +289,12 @@ export class Project extends EventEmitter {
 
       this.metadata.setScannerState(ScanState.FINISHED);
       this.metadata.save();
+      const search: Search = new Search(this.tree.getRootFolder().getFiles(), this.getScanRoot());
+      search.generateDictionary().then((dictionary) => {
+        this.dictionary = dictionary;
+        return true;
+      }).catch((err) => {});
+     
       await this.close();
       this.sendToUI(IpcEvents.SCANNER_FINISH_SCAN, {
         success: true,
@@ -434,5 +442,9 @@ export class Project extends EventEmitter {
 
   public getToken() {
     return this.metadata.getToken();
+  }
+
+  public getDictionary(){
+    return this.dictionary;
   }
 }

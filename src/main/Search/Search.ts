@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { isBinaryFile, isBinaryFileSync } from 'isbinaryfile';
+import { workspace } from '../workspace/Workspace';
 import { SearchEvents } from './SearchEvents';
 
 const fs = require('fs');
@@ -8,38 +9,43 @@ const { performance } = require('perf_hooks');
 const readline = require('readline');
 const osType = require('os').type();
 const { spawn } = require('child_process');
+const { exec } = require('child_process');
 
 export class Search extends EventEmitter {
   private files: any;
 
-  private word:string;
+  private word: string;
 
   private path: string;
 
-  constructor(word, path) {
+  constructor(files, path) {
     super();
-    this.word = word;
+    // this.word = word;
     this.path = path;
+    this.files = files;
   }
 
   public async search() {
-    let output = '';
+    const output = '';
+    const command = `grep -R -I -b -o "${this.word}" ${this.path} > /tmp/search.txt`;
 
-    const ls = spawn('grep', ['-w', '-n', '-R', '-I', '-b', '-o', `${this.word}`, `${this.path}`]);
+    // `grep -w -n -R -I -b -o "${this.word}" ${this.path}`;
+    console.log(command);
+    const ls = spawn('grep', ['-w', '-m', '1', '-n', '-R', '-I', '-b', '-o', `${this.word}`, `${this.path}`]);
 
     ls.stdout.on('data', (data) => {
-      output += data.toString();
-      this.emit(SearchEvents.SEARCH_ON_RESULT, data.toString());
-    });   
+      this.emit(SearchEvents.SEARCH_ON_RESULT, data.toString().split('\n'));
+    });
 
     ls.on('close', async (code) => {
-      if (code === 0) {
-        this.emit(SearchEvents.SEARCH_FINISHED, 'SEARCH FINISHED');
-        // const data = getData(output.toString().match(/.*.+?(?=:)/g));
-
-        // console.log("Search results for 'data': ", results);
-      }
+      this.emit(SearchEvents.SEARCH_FINISHED, 'FINISHED');
     });
+
+    // const data = getData(output.toString().match(/.*.+?(?=:)/g));
+
+    // console.log("Search results for 'data': ", results);
+    // }
+    // });
   }
 
   public async generateDictionary() {
@@ -53,11 +59,18 @@ export class Search extends EventEmitter {
             const words = line.content?.split(/[^a-zA-Z0-9*s]/g);
 
             words?.forEach((word) => {
-              if (!dictionary[word]) {
-                dictionary[word] = {};
-                dictionary[word][`${this.files[i].path}-${line.line}`] = 1;
-              } else if (!dictionary[word][`${this.files[i].path}-${line.line}`])
-                dictionary[word][`${this.files[i].path}-${line.line}`] = 1;
+              if (word !== '') {
+                if (!dictionary[word]) {
+                  dictionary[word] = {};
+
+                  dictionary[word][`${this.files[i].path}-${line.line}`] = [line.content.indexOf(word)];
+                } else if (dictionary[word][`${this.files[i].path}-${line.line}`]) {
+                  const auxIndex = dictionary[word][`${this.files[i].path}-${line.line}`];
+                  dictionary[word][`${this.files[i].path}-${line.line}`].push(line.content.indexOf(word, auxIndex + 1));
+                } else {
+                  dictionary[word][`${this.files[i].path}-${line.line}`] = [line.content.indexOf(word)];
+                }
+              }
             });
           }
         });
@@ -66,7 +79,7 @@ export class Search extends EventEmitter {
     const t1 = performance.now();
     console.log(`Time: ${(t1 - t0) / 1000} seconds.`);
     console.log('Dictionary is created\n', 'WORDS:', Object.keys(dictionary).length);
-
+    // fs.writeFileSync('/tmp/dictionary.json', JSON.stringify(dictionary,null,2));
     return dictionary;
   }
 
@@ -87,6 +100,31 @@ export class Search extends EventEmitter {
     );
   }
 
+  public searchIndex(wordSearched) {
+    const dictionary = workspace.getOpenedProjects()[0].getDictionary();
+
+    if (wordSearched.split(' ').length > 0) {
+      const phrase = wordSearched.split(' ');
+      const partialResults = this.getPartialResultForPhrase(phrase, dictionary);
+
+      console.log('partial results', partialResults);
+      const res = this.searchPhrase(partialResults, phrase);
+      console.log('res', res);
+      return res;
+    }
+
+    const results = [];
+    Array.from(
+      new Set(
+        Object.keys(dictionary)
+          .filter((k) => k.toLowerCase().includes(wordSearched))
+          .map((k) => results.push(dictionary[k]))
+      )
+    );
+
+    return results;
+  }
+
   private readFile(path) {
     const rl = readline.createInterface({
       input: fs.createReadStream(path),
@@ -96,7 +134,7 @@ export class Search extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       const lines = [{}];
-      let lineCount = 1;
+      let lineCount = 0;
       rl.on('line', function (line) {
         lines.push({
           line: (lineCount += 1),
@@ -122,5 +160,80 @@ export class Search extends EventEmitter {
     }
 
     return true;
+  }
+
+  private getPartialResultForPhrase(searchedPhrase, dic) {
+    const aux = {};
+
+    let results = {};
+    searchedPhrase.forEach((word) => {
+      if (!results[word]) results[word] = dic[word];
+    });
+
+    // sort results by amount of keys
+    const res = Object.keys(results)
+      .sort((a, b) => Object.keys(results[b]).length - Object.keys(results[a]).length)
+      // eslint-disable-next-line no-return-assign
+      .reduce((acc, key) => ((acc[key] = results[key]), acc), {});
+
+    results = res;
+    // console.log(results);
+
+    const auxKeys = Object.keys(results);
+
+    let valid = true;
+
+    Object.keys(results[auxKeys[0]]).forEach((file) => {
+      for (let i = 0; i < auxKeys.length; i+=1) {
+        if (results[auxKeys[i]][file] === undefined) {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid) {
+        auxKeys.forEach((key) => {
+          if (aux[key] === undefined) {
+            aux[key] = {};
+            aux[key] = { [file]: results[key][file] };
+          } else {
+            aux[key][file] = results[key][file];
+          }
+        });
+      }
+
+      valid = true;
+    });
+
+    return aux;
+  }
+
+  private searchPhrase(results, phrase) {
+    const searchedPhraseResults = [];
+    const auxResults = Object.keys(results);
+
+    if (auxResults.length !== phrase.length) {
+      for (let i = 0; i < auxResults.length; i += 1) {
+        if (auxResults[i] !== phrase[i]) {
+          return [];
+        }
+      }
+
+      return [];
+    }
+
+    const resultsPerWord = Object.keys(results[phrase[0]]).length;
+    for (let i = 0; i < resultsPerWord; i += 1) {
+      Object.keys(results[phrase[0]]).forEach((key) => {
+        if (results[phrase[phrase.length - 1]][key][i]) {
+          const range = `${results[phrase[0]][key][i]}-${
+            results[phrase[phrase.length - 1]][key][i] + phrase.length + 1
+          }`;
+          searchedPhraseResults.push({ [key]: range });
+        }
+      });
+    }
+
+    return searchedPhraseResults;
   }
 }
