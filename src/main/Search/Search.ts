@@ -110,9 +110,10 @@ export class Search extends EventEmitter {
     const partialResults = this.getPartialResult(wordSearched);
     let results = {};
     if (wordSearched.split(' ').length > 1) {
-      results = this.getResultsAND(partialResults);
-    }else{
-    results = partialResults;
+      const resultsAND = this.getResultsAND(partialResults);
+      if (resultsAND.length > 0) results = this.converter(resultsAND, partialResults);
+    } else {
+      results = partialResults;
     }
     return results;
   }
@@ -284,5 +285,21 @@ export class Search extends EventEmitter {
     });
 
     return resultsAND;
+  }
+
+  private converter(resultsAND, data) {
+    const results = {};
+    Object.entries(data).forEach(([key, values]) => {
+      resultsAND.forEach((rAND) => {
+        if (values[rAND] !== undefined) {
+          if (!results[key] === undefined) {
+            results[key][rAND] = values[rAND];
+          } else {
+            results[key] = { [rAND]: values[rAND] };
+          }
+        }
+      });
+    });
+    return results;
   }
 }
