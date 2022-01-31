@@ -57,9 +57,8 @@ export class Search extends EventEmitter {
         const lines: any = await this.readFile(`${this.path}${this.files[i].path}`);
         lines.forEach((line) => {
           if (line.content !== undefined) {
-            const words = line.content?.split(/([a-zA-Z0-9]+|[^\s\w])/g);
-            let countWord = 0;
-            words?.forEach((word) => {
+            const words = line.content?.split(/([a-zA-Z0-9]+|[^\s\w])/g).filter((item) => item.trim() !== '');
+            words?.forEach((word, countWord) => {
               if (word !== '' && word !== ' ') {
                 if (dictionary[word] === undefined) {
                   dictionary[word] = {};
@@ -75,7 +74,6 @@ export class Search extends EventEmitter {
                     }
                   }
                 }
-                countWord += 1;
               }
             });
           }
@@ -85,7 +83,7 @@ export class Search extends EventEmitter {
 
     const t1 = performance.now();
     console.log(`Time: ${(t1 - t0) / 1000} seconds.`);
-    console.log('Dictionary is created\n', 'WORDS:', Object.keys(dictionary).length);  
+    console.log('Dictionary is created\n', 'WORDS:', Object.keys(dictionary).length);
     return dictionary;
   }
 
