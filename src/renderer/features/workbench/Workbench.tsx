@@ -2,9 +2,7 @@ import { CircularProgress, Input, InputLabel } from '@material-ui/core';
 import React, { useContext, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation, useRouteMatch } from 'react-router-dom';
 import SplitPane from 'react-split-pane';
-
 import { dialogController } from '../../dialog-controller';
-
 import { WorkbenchContext, IWorkbenchContext } from './store';
 import { AppContext, IAppContext } from '../../context/AppProvider';
 import AppBar from './components/AppBar/AppBar';
@@ -13,10 +11,6 @@ import Identified from './pages/identified/Identified';
 import Reports from './pages/report/Report';
 import FileTree from './components/FileTree/FileTree';
 import { searchService } from '../../../api/search-service';
-import { IpcEvents } from '../../../ipc-events';
-import { finished } from 'stream';
-
-const { ipcRenderer } = require('electron');
 
 const Workbench = () => {
   const { path } = useRouteMatch();
@@ -26,6 +20,7 @@ const Workbench = () => {
   const { state, loadScan } = useContext(WorkbenchContext) as IWorkbenchContext;
   const { scanPath } = useContext(AppContext) as IAppContext;
 
+  const [query, setQuery] = React.useState('');
   const [word, setWord] = React.useState('');
 
   const { loaded } = state;
@@ -34,8 +29,6 @@ const Workbench = () => {
 
   const onInit = async () => {
     const { path } = scanPath;
-  //  ipcRenderer.on(IpcEvents.SEARCH_RESPONSE, handlerSearch);
-  //  ipcRenderer.on(IpcEvents.SEARCH_FINISHED, searchFinished);
     const result = path ? await loadScan(path) : false;
     if (!result) {
       dialogController.showError('Error', 'Cannot read scan.');
@@ -49,26 +42,21 @@ const Workbench = () => {
     return onDestroy;
   }, []);
 
-  const handleChange = async (event) => {
-    setWord(event.target.value);
-    console.log("Start searching");
-    // const results = await searchService.search("license");
-    const  { data } = await searchService.searchByIndex('timespec millis');
-    console.log(data);
-    
-  
+  useEffect(() => {
+    const timeOutId = setTimeout(() => setWord(query), 500);
+    return () => clearTimeout(timeOutId);
+  }, [query]);
+
+  useEffect(() => {
+    search(word);
+  }, [word]);
+
+  const search = async (word) => {
+    if (word !== '') {
+      const { data } = await searchService.searchByIndex(word);
+      console.log('Search results:', data);
+    }
   };
-
-
-  const handlerSearch = (_event, results) => {
-    console.log("Results: ", results);
-   
-  };
-
-  const searchFinished = (_event, results) => {
-    console.log("Search finished",results);
-  };
-
   return (
     <div>
       <AppBar />
@@ -80,8 +68,8 @@ const Workbench = () => {
         pane1Style={report ? { display: 'none' } : {}}
       >
         <aside className="panel explorer">
-        <InputLabel htmlFor="component-simple">Search</InputLabel>
-        <Input id="component-simple" value={word} onChange={handleChange} />
+          <InputLabel htmlFor="component-simple">Search</InputLabel>
+          <Input id="component-simple" value={query} onChange={(event) => setQuery(event.target.value)} />
           <div className="file-tree-container">
             <FileTree />
           </div>
