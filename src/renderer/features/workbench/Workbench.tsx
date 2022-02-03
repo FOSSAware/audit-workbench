@@ -11,6 +11,8 @@ import Identified from './pages/identified/Identified';
 import Reports from './pages/report/Report';
 import FileTree from './components/FileTree/FileTree';
 import { searchService } from '../../../api/search-service';
+import { ipcRenderer } from 'electron';
+import { IpcEvents } from '../../../ipc-events';
 
 const Workbench = () => {
   const { path } = useRouteMatch();
@@ -28,12 +30,23 @@ const Workbench = () => {
   const report = pathname.startsWith('/workbench/report');
 
   const onInit = async () => {
+    ipcRenderer.on(IpcEvents.SEARCH_RESPONSE, handlerSearch);
+   ipcRenderer.on(IpcEvents.SEARCH_FINISHED, searchFinished);
     const { path } = scanPath;
     const result = path ? await loadScan(path) : false;
     if (!result) {
       dialogController.showError('Error', 'Cannot read scan.');
     }
   };
+
+  const handlerSearch = (_event, args) => {
+    console.log(args);
+  };
+
+  const searchFinished = (_event, args) => {
+    console.log(args);
+  };
+
 
   const onDestroy = () => {};
 
@@ -53,10 +66,11 @@ const Workbench = () => {
 
   const search = async (word) => {
     if (word !== '') {
-      const { data } = await searchService.searchByIndex(word);
-      console.log('Search results:', data);
+      await searchService.search(word);     
     }
   };
+
+
   return (
     <div>
       <AppBar />

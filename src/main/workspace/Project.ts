@@ -289,12 +289,12 @@ export class Project extends EventEmitter {
 
       this.metadata.setScannerState(ScanState.FINISHED);
       this.metadata.save();
-      const search: Search = new Search(this.tree.getRootFolder().getFiles(), this.getScanRoot());
-     // this.dictionary = await search.getDictionary();
-      search.generateDictionary().then((dictionary) => {
-        this.dictionary = dictionary;
-        return true;
-      }).catch((err) => {});
+     //  const search: Search = new Search(this.tree.getRootFolder().getFiles(), this.getScanRoot());
+    
+      // search.generateDictionary().then((dictionary) => {
+      //   this.dictionary = dictionary;
+      //   return true;
+      // }).catch((err) => {});
      
       await this.close();
       this.sendToUI(IpcEvents.SCANNER_FINISH_SCAN, {

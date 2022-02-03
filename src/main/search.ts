@@ -11,7 +11,10 @@ ipcMain.handle(IpcEvents.SEARCH, async (event, arg: string) => {
   console.log('searching for: ', workspace.getOpenedProjects()[0].getScanRoot());
 
   const search: Search = new Search(arg, workspace.getOpenedProjects()[0].getScanRoot());
+  // search.search();
+  search.setWord(arg);
   search.search();
+
   search.on(SearchEvents.SEARCH_ON_RESULT, (response) => {
     mailBox.send(IpcEvents.SEARCH_RESPONSE, { data: response });
   });

@@ -26,16 +26,19 @@ export class Search extends EventEmitter {
     this.files = files;
   }
 
+  public setWord(word) {
+    this.word = word;
+  }
+
   public async search() {
     const output = '';
-    const command = `grep -R -I -b -o "${this.word}" ${this.path} > /tmp/search.txt`;
 
-    // `grep -w -n -R -I -b -o "${this.word}" ${this.path}`;
-    console.log(command);
     const ls = spawn('grep', ['-w', '-m', '1', '-n', '-R', '-I', '-b', '-o', `${this.word}`, `${this.path}`]);
 
     ls.stdout.on('data', (data) => {
-      this.emit(SearchEvents.SEARCH_ON_RESULT, data.toString().split('\n'));
+      if (data !== undefined){
+        this.emit(SearchEvents.SEARCH_ON_RESULT, data.toString().split('\n'));
+      }
     });
 
     ls.on('close', async (code) => {
