@@ -15,6 +15,6 @@
   },
   "license": "GPL-2.0",
   "dependencies": {
-    "sqlite3": "5.0.0"
+    "sqlite3": "5.0.3"
   }
 }
